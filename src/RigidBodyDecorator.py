@@ -38,7 +38,6 @@ class RigidBodyDecorator(SceneNodeDecorator):
             mass.setBox(5.0, Helpers.toODE(aabb.width), Helpers.toODE(aabb.height), Helpers.toODE(aabb.depth))
             self._body.setMass(mass)
 
-
         if not self._geom:
             if node.getMeshData():
                 scale_matrix = Matrix()
@@ -49,13 +48,10 @@ class RigidBodyDecorator(SceneNodeDecorator):
 
                 debug_builder = MeshBuilder()
 
-                #hull = mesh.getConvexHull()
-
                 vertices = mesh.getVertices()
-                #indices = mesh.getIndices() if mesh.hasIndices() else numpy.fliplr(numpy.arange(len(vertices), dtype = numpy.int32).reshape((len(vertices) // 3, 3)))
                 indices = mesh.getConvexHull().simplices
 
-                self._fixWindingOrder(vertices, indices, debug_builder)
+                _fixWindingOrder(vertices, indices, debug_builder)
 
                 self._trimesh.build(vertices / Helpers.ScaleFactor, indices)
 
@@ -70,12 +66,7 @@ class RigidBodyDecorator(SceneNodeDecorator):
                     v1 = Helpers.fromODE(tri[1])
                     v2 = Helpers.fromODE(tri[2])
 
-                    #normal = calculateNormal(v0, v1, v2)
-
                     mb.addFace(v0 = v0, v1 = v1, v2 = v2, color = Color(1.0, 0.0, 0.0, 0.5))
-
-                    #for n in range(3):
-                        #mb.addLine(fromODE(tri[n]), fromODE(tri[n]) + (normal * 10), Color(0.0, 1.0, 0.0, 1.0))
 
                 chn = SceneNode(node)
                 chn.setMeshData(mb.build())
@@ -137,27 +128,27 @@ class RigidBodyDecorator(SceneNodeDecorator):
 
         self._body.setPosition(Helpers.toODE(self.getNode().getWorldPosition()))
 
-    def _fixWindingOrder(self, vertices, indices, debug_builder):
-        for i in range(len(indices)):
-            v0 = vertices[indices[i][0]]
-            v1 = vertices[indices[i][1]]
-            v2 = vertices[indices[i][2]]
+def _fixWindingOrder(vertices, indices, debug_builder):
+    for i in range(len(indices)):
+        v0 = vertices[indices[i][0]]
+        v1 = vertices[indices[i][1]]
+        v2 = vertices[indices[i][2]]
 
-            normal = calculateNormal(v0, v1, v2)
+        normal = _calculateNormal(v0, v1, v2)
 
-            center = (v0 + v1 + v2) / 3
+        center = (v0 + v1 + v2) / 3
 
-            direction = center / numpy.linalg.norm(center)
+        direction = center / numpy.linalg.norm(center)
 
-            debug_builder.addLine(Vector(data = center), Vector(data = center + direction * 10), Color(0.0, 0.0, 1.0, 1.0))
-            debug_builder.addLine(Vector(data = center), Vector(data = center + normal * 10), Color(0.0, 1.0, 0.0, 1.0))
+        debug_builder.addLine(Vector(data = center), Vector(data = center + direction * 10), Color(0.0, 0.0, 1.0, 1.0))
+        debug_builder.addLine(Vector(data = center), Vector(data = center + normal * 10), Color(0.0, 1.0, 0.0, 1.0))
 
-            if normal.dot(direction) < 0.1:
-                indices[i][0], indices[i][2] = indices[i][2], indices[i][0]
-                new_normal = calculateNormal(v2, v1, v0)
-                debug_builder.addLine(Vector(data = center), Vector(data = center + new_normal * 10), Color(1.0, 0.0, 0.0, 1.0))
+        if normal.dot(direction) < 0.1:
+            indices[i][0], indices[i][2] = indices[i][2], indices[i][0]
+            new_normal = _calculateNormal(v2, v1, v0)
+            debug_builder.addLine(Vector(data = center), Vector(data = center + new_normal * 10), Color(1.0, 0.0, 0.0, 1.0))
 
-def calculateNormal(v0, v1, v2):
+def _calculateNormal(v0, v1, v2):
     edge0 = v0 - v1
     edge1 = v0 - v2
 
@@ -168,4 +159,3 @@ def calculateNormal(v0, v1, v2):
         normal = normal / length
 
     return normal
-
