@@ -7,5 +7,8 @@ install(FILES
     src/ODEPhysicsPlugin.py
     src/RigidBodyDecorator.py
     src/Helpers.py
+    src/TranslateTool.py
+    src/TranslateToolHandle.py
+    src/TranslateTool.qml
     DESTINATION lib/cura/plugins/ode-physicsplugin
 )

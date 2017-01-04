@@ -212,7 +212,7 @@ class TranslateTool(Tool):
 
                 for node in Selection.getAllSelectedObjects():
                     body = node.callDecoration("getBody")
-                    body.addForce(node.callDecoration("toODE", drag * 10000000))
+                    body.addForce(node.callDecoration("toODE", drag * 100000000))
 
                 self._distance += drag
 
