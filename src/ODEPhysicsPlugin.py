@@ -12,6 +12,7 @@ from UM.Scene.Iterator.DepthFirstIterator import DepthFirstIterator
 from .RigidBodyDecorator import RigidBodyDecorator
 from .Helpers import fromODE, toODE
 from .OutsideInPlacementStrategy import OutsideInPlacementStrategy
+from .ObjectPacker import ObjectPacker
 
 class ODEPhysicsPlugin(Extension):
     def __init__(self):
@@ -50,6 +51,9 @@ class ODEPhysicsPlugin(Extension):
         self._timer.timeout.connect(self._onTimer)
         self._timer.start()
 
+        self._object_packer = ObjectPacker(self)
+        self.addMenuItem("Pack Objects", self.packObjects)
+
     @property
     def world(self):
         return self._world
@@ -66,6 +70,9 @@ class ODEPhysicsPlugin(Extension):
         self._space.collide( (self._world, self._contact_group), self._onCollision )
         self._world.quickStep((self._update_interval / 1000) / self._steps_per_update)
         self._contact_group.empty()
+
+    def packObjects(self):
+        self._object_packer.pack()
 
     def _onJobFinished(self, job):
         if not isinstance(job, ReadMeshJob):

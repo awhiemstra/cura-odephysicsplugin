@@ -11,5 +11,6 @@ install(FILES
     src/TranslateTool.py
     src/TranslateToolHandle.py
     src/TranslateTool.qml
+    src/ObjectPacker.py
     DESTINATION lib/cura/plugins/ode-physicsplugin
 )
