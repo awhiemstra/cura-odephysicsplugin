@@ -7,6 +7,7 @@ install(FILES
     src/ODEPhysicsPlugin.py
     src/RigidBodyDecorator.py
     src/Helpers.py
+    src/OutsideInPlacementStrategy.py
     src/TranslateTool.py
     src/TranslateToolHandle.py
     src/TranslateTool.qml

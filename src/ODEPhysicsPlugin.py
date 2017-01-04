@@ -11,6 +11,7 @@ from UM.Scene.Iterator.DepthFirstIterator import DepthFirstIterator
 
 from .RigidBodyDecorator import RigidBodyDecorator
 from .Helpers import fromODE, toODE
+from .OutsideInPlacementStrategy import OutsideInPlacementStrategy
 
 class ODEPhysicsPlugin(Extension):
     def __init__(self):
@@ -31,26 +32,40 @@ class ODEPhysicsPlugin(Extension):
 
         self._world.setAutoDisableLinearThreshold(0.001)
         #self._world.setAutoDisableTime(0.1)
-
         self._space = ode.Space(space_type = 1)
-
         self._contact_group = ode.JointGroup()
+        self._build_plate = ode.GeomPlane(self._space, (0, 1, 0), 0)
 
         self._contact_bounce = 0.0
         #self._contact_friction = float("inf")
         self._contact_friction = 0
 
-        self._initial_positioning = False
-
-        self._build_plate = ode.GeomPlane(self._space, (0, 1, 0), 0)
+        self._placement_strategy = OutsideInPlacementStrategy(self)
 
         self._update_interval = 20
         self._steps_per_update = 10
 
         self._timer = QTimer()
-        self._timer.setInterval(20)
+        self._timer.setInterval(self._update_interval)
         self._timer.timeout.connect(self._onTimer)
         self._timer.start()
+
+    @property
+    def world(self):
+        return self._world
+
+    @property
+    def space(self):
+        return self._space
+
+    @property
+    def contactGroup(self):
+        return self._contact_group
+
+    def runSimulation(self):
+        self._space.collide( (self._world, self._contact_group), self._onCollision )
+        self._world.quickStep((self._update_interval / 1000) / self._steps_per_update)
+        self._contact_group.empty()
 
     def _onJobFinished(self, job):
         if not isinstance(job, ReadMeshJob):
@@ -60,40 +75,7 @@ class ODEPhysicsPlugin(Extension):
         if not nodes:
             return
 
-        fixed_nodes = []
-        for node in DepthFirstIterator(Application.getInstance().getController().getScene().getRoot()):
-            if node.hasDecoration("setFixed"):
-                fixed_nodes.append(node)
-                node.callDecoration("setFixed", True)
-
-        for node in nodes:
-            node.addDecorator(RigidBodyDecorator(self._world, self._space))
-
-        #self._world.setLinearDamping(0)
-        #self._contact_bounce = 1
-        #self._world.setContactMaxCorrectingVel(toODE(1000))
-        self._initial_positioning = True
-
-        for i in range(1000):
-            self._space.collide( (self._world, self._contact_group), self._onCollision )
-            self._world.quickStep( (self._update_interval / 1000) / self._steps_per_update )
-            self._contact_group.empty()
-
-            #for node in nodes:
-                #geom = node.callDecoration("getGeom")
-                #if geom and hasattr(geom, "collision_count"):
-
-                    #force = node.getWorldPosition().normalized() * (geom.collision_count * 10000000)
-                    #node.callDecoration("getBody").addForce( (force.x, force.y, force.z) )
-
-        #self._world.setLinearDamping(1)
-        #self._world.setContactMaxCorrectingVel(float("inf"))
-        #self._contact_bounce = 0
-
-        self._initial_positioning = False
-
-        #for node in fixed_nodes:
-            #node.callDecoration("setFixed", False)
+        self._placement_strategy.placeNodes(nodes)
 
     def _onCollision(self, args, geom1, geom2):
         contacts = ode.collide(geom1, geom2)
@@ -105,22 +87,9 @@ class ODEPhysicsPlugin(Extension):
             j = ode.ContactJoint(world, contact_group, c)
             j.attach(geom1.getBody(), geom2.getBody())
 
-            #if self._initial_positioning:
-                #for geom in (geom1, geom2):
-                    #if geom.getBody() and not geom.getBody().isKinematic():
-                        #if not hasattr(geom, "collision_count"):
-                            #geom.collision_count = 0
-                        #geom.collision_count += 1
-
     def _onTimer(self):
-        dt = self._update_interval / 1000
-
         for i in range(self._steps_per_update):
-            self._space.collide( (self._world, self._contact_group), self._onCollision )
-
-            self._world.quickStep(dt / self._steps_per_update)
-
-            self._contact_group.empty()
+            self.runSimulation()
 
         for node in DepthFirstIterator(Application.getInstance().getController().getScene().getRoot()):
             node.callDecoration("updateFromODE")
